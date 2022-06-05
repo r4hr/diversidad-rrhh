@@ -1,0 +1,107 @@
+---
+title: "Análisis de Diversidad en RRHH"
+author: "Sergio Garcia Mora | R4HR"
+date: "1/6/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, dpi = 600, fig.retina = 3)
+```
+
+# ¿Hay diversidad en RRHH?
+
+Junio es el **Mes del Orgullo LBGTIQ+** `r emo::ji("rainbow")`, una etapa del año en donde se hace más visible la lucha por la igualdad de derechos de las personas de distintas identidades de género y orientaciones sexuales no heteronormativas. Es también un mes para celebrar la diversidad y trabajar en pos de la inclusión.
+
+Siendo que en la mayoría de las organizaciones la responsabilidad de las acciones de diversidad e inclusión recaen en RRHH, quisimos aprovechar los datos de las ediciones 2020 y 2021 de la **Encuesta KIWI de Sueldos de RH** para analizar cómo andamos por casa.
+
+No tenemos un volumen de datos como para afirmar tajantemente si las áreas son diversas o no lo son, pero al menos creo que servirán para fomentar la discusión.
+
+```{r librerias_datos}
+# El paquete pacman permite cargar todas las librerías ya instaladas y si faltara instalar alguna, la instala
+# Código para instalar el paquete: install.packages("pacman")
+pacman::p_load(tidyverse, googlesheets4, gt)
+
+# Cargar los datos
+kiwi20 <- read_sheet("1833xEeRIy1DLke4eHKfEThjjgx01YGX9yQaU6vv15K0", 
+                     skip = 5) %>% 
+  janitor::clean_names()
+
+kiwi21 <-read_sheet("1LDdXlIwrcsyuywbcS4gdc-1p6wBXfEfL2Y6sNBj-4GM",
+                    skip = 5) %>% 
+  janitor::clean_names()
+```
+
+## Los objetivos de este análisis
+
+Con este análisis queremos descubrir:
+
+-   Cuanta diversidad de identidades de género y orientaciones sexuales hay en RRHH.
+
+-   En qué rubros se da la mayor tasa de diversidad.
+
+-   Niveles de formación.
+
+-   Y qué roles ejercen estas personas.
+
+Sería interesante poder abordar el gap salarial, pero por un lado tenemos pocas respuestas de personas de distintas identidades de género y diversidades sexuales, y también es un tema que ya abordamos en las ediciones de la Encuesta KIWI [2020](https://rpubs.com/Data4HR/encuesta-kiwi-2020) y [2021](https://rpubs.com/Data4HR/encuesta-kiwi-2021). En ambos links podrás encontrar los datos crudos de ambos años y analizarlo por tu cuenta.
+
+## Preparando el análisis
+
+### Selección y limpieza de datos
+
+En ambas ediciones tenemos algunas columnas que se llaman distinto y además en la edición del 2020 y la del 2021 nos referimos de distintas maneras a las identidades de género porque nosotros también tuvimos que aprender a como encarar este análisis de manera más inclusiva.
+
+Si la parte técnica de este trabajo no es de tu interés podés avanzar directamente a la siguiente sección.
+
+```{r limpieza_datos}
+# Seleccionar las columnas de ambos data frames.
+kiwi20 <- kiwi20 %>% 
+  select(identidad_genero = genero, 
+         diversidad_sexual = te_identificas_como_lgbt_lesbiana_gay_bisexual_transexual_otra_minoria_sexual,
+         rubro = rubro_de_la_empresa,
+         origen_del_capital,
+         puesto = en_que_puesto_trabajas,
+         maximo_nivel_de_formacion,
+         trabajo) %>% 
+  mutate(libertad_ser = 99) # Añado una columna con un valor = 1 porque esta pregunta no existía en la edición 2020 de la Encuesta
+
+kiwi21 <- kiwi21 %>% 
+  select(identidad_genero = identidad_de_genero,
+         diversidad_sexual = te_identificas_como_lgbtiq_lesbiana_gay_bisexual_transexual_otra_minoria_sexual,
+         rubro = rubro_de_la_empresa,
+         origen_del_capital,
+         puesto = en_que_puesto_trabajas,
+         maximo_nivel_de_formacion,
+         trabajo,
+         libertad_ser = en_tu_empresa_puedes_ser_como_realmente_eres_por_ej_expresar_abiertamente_tu_personalidad_tu_identidad_de_genero_orientacion_sexual_etc)
+
+# Unir ambos datasets
+kiwi <- rbind(kiwi20, kiwi21)
+
+# Como ya tengo unificados ambos datasets puedo borrar las versiones individuales para ahorrar memoria
+rm(kiwi20, kiwi21)
+```
+
+En la edición 2020, nos referíamos a la identidad de género de una manera diferente a la que lo hicimos en la edición del 2021, así que la siguiente parte consiste en consolidar los datos de ambas ediciones.
+
+```{r datos_genero}
+
+# Verificar las distintas formas de referirse al género
+unique(kiwi$identidad_genero)
+```
+
+En los datos encontramos 5 formas diferentes de referirse a los hombres cis, y 5 formas diferentes de referirse a las mujeres cis, así que el siguiente paso es unificar estos valores para simplificar el análisis y la interpretación de los resultados.
+
+> El sufijo *cis* hace referencia a las personas que se identifican con el mismo género asignado al nacer.
+
+```{r unificacion_genero}
+kiwi %>% 
+  mutate(identidad_genero = fct_collapse(identidad_genero,
+                                         "Hombre cis" = c("Masculino",
+                                                          "Hombre cis",
+                                                          "Hombre",
+                                                          "Hombre hetero. Que es cis?",
+                                                          "Hombre heterosexual"),
+                                         "Mujer cis" ))
+```
