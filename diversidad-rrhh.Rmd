@@ -64,7 +64,8 @@ kiwi20 <- kiwi20 %>%
          puesto = en_que_puesto_trabajas,
          maximo_nivel_de_formacion,
          trabajo) %>% 
-  mutate(libertad_ser = 99) # Añado una columna con un valor = 1 porque esta pregunta no existía en la edición 2020 de la Encuesta
+  mutate(libertad_ser = 99, 
+         edicion = 2020) # Añado una columna con un valor = 1 porque esta pregunta no existía en la edición 2020 de la Encuesta
 
 kiwi21 <- kiwi21 %>% 
   select(identidad_genero = identidad_de_genero,
@@ -74,7 +75,8 @@ kiwi21 <- kiwi21 %>%
          puesto = en_que_puesto_trabajas,
          maximo_nivel_de_formacion,
          trabajo,
-         libertad_ser = en_tu_empresa_puedes_ser_como_realmente_eres_por_ej_expresar_abiertamente_tu_personalidad_tu_identidad_de_genero_orientacion_sexual_etc)
+         libertad_ser = en_tu_empresa_puedes_ser_como_realmente_eres_por_ej_expresar_abiertamente_tu_personalidad_tu_identidad_de_genero_orientacion_sexual_etc) %>% 
+  mutate(edicion = 2021)
 
 # Unir ambos datasets
 kiwi <- rbind(kiwi20, kiwi21)
@@ -96,12 +98,51 @@ En los datos encontramos 5 formas diferentes de referirse a los hombres cis, y 5
 > El sufijo *cis* hace referencia a las personas que se identifican con el mismo género asignado al nacer.
 
 ```{r unificacion_genero}
-kiwi %>% 
+# Unificar identidades de género
+kiwi <- kiwi %>% 
   mutate(identidad_genero = fct_collapse(identidad_genero,
                                          "Hombre cis" = c("Masculino",
                                                           "Hombre cis",
                                                           "Hombre",
                                                           "Hombre hetero. Que es cis?",
                                                           "Hombre heterosexual"),
-                                         "Mujer cis" ))
+                                         "Mujer cis" = c("Femenino",
+                                                         "Mujer cis",
+                                                         "mujer",
+                                                         "Mujer heterosexual",
+                                                         "Mujer"),
+                                         "Género diverso" = c("Género diverso (género diverso / género fluido /otras minorías)",
+                                                              "No binario",
+                                                              "Gay")))
+
+# Ver resultados
+unique(kiwi$identidad_genero)
+```
+
+También será necesario limpiar los rubros:
+
+```{r rubros}
+kiwi <- kiwi %>% 
+  mutate(rubro = fct_collapse(rubro, "Agro" = c("Agricultura, plantaciones, otros sectores rurales", "Agricultura; plantaciones,otros sectores rurales"),
+                              "Alimentos" = c("Alimentación, bebidas", "Alimentación; bebidas; tabaco"),
+                              "Bancos y Finanzas" = c("Bancos, banca online", "Bancos; banca online;", "Servicios financieros seguros", "Servicios financieros; seguros"),
+                              "Autopartista" = c("Fabricación de material de transporte", "Terminales automotrices, fábricas autopartistas, y afines"), 
+                              "Hotelería" = "Hotelería, restauración, turismo",
+                              "Metalurgia" = c("Industria metalúrgica, metalmecánica", "Producción de metales básicos"), 
+                              "Medios" = c("Medios de comunicación, cultura, gráficos", "Medios de comunicación; cultura; gráficos"),
+                              "MInería" = c("Minería", "Minería (carbón, otra minería)"),
+                              "Oil & Gas" = c("Petróleo y producción de gas, refinación de petróleo", "Petróleo y producción de gas; refinación de petróleo"), 
+                              "Consultoría" = "Servicios de consultoría",
+                              "Correos" = c("Servicios de correos y de telecomunicaciones", "Medios de comunicación; cultura; gráficos"),
+                              "Correos" = c("Servicios de correos y de telecomunicaciones", "Servicios de correos, y de telecomunicaciones"),
+                              "Servicios Públicos" = c("Servicios públicos (agua, gas, electricidad)", "Servicios públicos (agua;gas; electricidad)"),
+                              "Silvicultura" = "Silvicultura; madera; celulosa; papel",
+                              "Tecnología" = c("Tecnologías de información", "Tecnologías de Información, Sistemas, y afines"), 
+                              "Textil" = c("Textiles, vestido, cuero, calzado", "Textiles; vestido; cuero; calzado"),
+                              "Transporte" = c("Transporte (incluyendo aviación civil, ferrocarriles por carretera)", "Transporte (incluyendo aviación civil; ferrocarriles por carretera)", "Transporte marítimo, puertos", "Transporte marítimo; puertos;"
+                                               )))
+
+# Añadimos a los freelancers como servicios de consultoría dentro de la columna Rubro
+kiwi <- kiwi %>% 
+  mutate(rubro = if_else(trabajo == "Freelance", "Consultoría Freelance", as.character(rubro)))
 ```
