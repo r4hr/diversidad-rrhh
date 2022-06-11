@@ -2,7 +2,14 @@
 title: "Análisis de Diversidad en RRHH"
 author: "Sergio Garcia Mora | R4HR"
 date: "1/6/2022"
-output: html_document
+output: 
+  html_document:
+    theme: cosmo
+    highlight: haddock
+    toc: true
+    toc_float: true
+    code_folding: hide
+    code_download: true
 ---
 
 ```{r setup, include=FALSE}
@@ -65,6 +72,7 @@ kiwi20 <- kiwi20 %>%
          maximo_nivel_de_formacion,
          trabajo) %>% 
   mutate(libertad_ser = 99, 
+         sufrio_acoso = 99,
          edicion = 2020) # Añado una columna con un valor = 1 porque esta pregunta no existía en la edición 2020 de la Encuesta
 
 kiwi21 <- kiwi21 %>% 
@@ -75,7 +83,8 @@ kiwi21 <- kiwi21 %>%
          puesto = en_que_puesto_trabajas,
          maximo_nivel_de_formacion,
          trabajo,
-         libertad_ser = en_tu_empresa_puedes_ser_como_realmente_eres_por_ej_expresar_abiertamente_tu_personalidad_tu_identidad_de_genero_orientacion_sexual_etc) %>% 
+         libertad_ser = en_tu_empresa_puedes_ser_como_realmente_eres_por_ej_expresar_abiertamente_tu_personalidad_tu_identidad_de_genero_orientacion_sexual_etc, 
+         sufrio_acoso = sufriste_alguna_situacion_de_acoso_abuso_o_de_discriminacion_en_algun_trabajo) %>% 
   mutate(edicion = 2021)
 
 # Unir ambos datasets
@@ -146,3 +155,225 @@ kiwi <- kiwi %>%
 kiwi <- kiwi %>% 
   mutate(rubro = if_else(trabajo == "Freelance", "Consultoría Freelance", as.character(rubro)))
 ```
+
+Ahora es necesario hacer una limpieza del campo `puesto` dado que tenemos `r length(unique(kiwi$puesto))` valores diferentes, lo cual es mucho, así que va a ser necesario limpiar los datos para unificar valores y descartar posiciones que no están relacionadas con RRHH.
+
+```{r limpieza_puestos}
+# Descartamos posiciones no relacionadas con RRHH
+kiwi <- kiwi %>% 
+  filter(!puesto %in% c("Juzgado Civil y Comercial", "Programador",
+                        "Cuidado", "Asesor", "Jefe de Proyecto", "Desarrollador", 
+                        "-", "Inspección de calidad", "Jefe de Proyecto",
+                        "Representante", "Técnico", "Asesoramiento")) %>% 
+  mutate(puesto = str_trim(puesto, side = "both")) # Elimina espacios vacíos antes y después de cada palabra
+
+# Reemplazar los valores NA por Consultor Freelance
+kiwi <- kiwi %>% 
+  mutate(puesto = if_else(is.na(puesto), "Consultor Freelance", puesto))
+
+
+# Unificación de Puestos
+kiwi <- kiwi %>% 
+  mutate(puesto = fct_collapse(puesto, "Gerente" = c("Gerente",
+                                                     "Superintendente", 
+                                                     "Director",
+                                                     "Director ( escalafón municipal)"),
+                         "HRBP" = c("HRBP",
+                                    "Senior Consultoría", "specialist",
+                                    "especialista",
+                                    "Especialista de selección por un lado (única persona en estas tareas) y HRBP de 2 equipos por otro",
+                                    "Especialista en selección IT", 
+                                    "Recruiter"),
+                        "Responsable" = c("Responsable",
+                                          "Coordinación",
+                                          "coordinación",
+                                          "Coordinador de Payroll",
+                                          "Encargado",
+                                          "Coordinadora",
+                                          "Supervisor"),
+                        "Administrativo" = c("Administrativo",
+                                             "Asistente",
+                                             "Asistente RRHH",
+                                             "Aux", "Auxiliar",
+                                             "consultor jr",
+                                             "El cargo es Asistente de CH, pero leo adelante Comunicación Interna, RSE, Capacitacion",
+                                             "Payroll Assistant"),
+                        "Analista" = c("Analista", 
+                                       "Analista semi senior",
+                                       "Asesoramiento", 
+                                       "Consultor", 
+                                       "Capacitador", 
+                                       "Consultor Ejecutivo",
+                                       "consultor jr",
+                                       "Generalista",
+                                       "Reclutador",
+                                       "Recruiter",
+                                       "Reclutadora", 
+                                       "Selectora",
+                                       "Senior",
+                                       "Senior Consultoría",
+                                       "Sourcer (Recruiter)",
+                                       "Sourcer Specialist",
+                                       "specialist",
+                                       "talent",
+                                       "Talent Acquisition",
+                                       "Tech Recruiter")))
+  
+
+```
+
+Y por último, si bien esto no es exactamente limpieza de datos, nos va a permitir hacer gráficos más bonitos.
+
+```{r setup_graficos}
+#options(scipen = 999)   # Modifica la visualización de los ejes numérico a valores nominales
+
+extrafont::loadfonts(quiet = TRUE) # Permite cargar en R otros tipos de fuentes.
+
+# Estilo limpio sin líneas de fondo
+estilo <- theme(panel.grid = element_blank(),
+                plot.background = element_rect(fill = "#FBFCFC"),
+                panel.background = element_blank(),
+                text = element_text(family = "Poppins-Light"), 
+                plot.title.position = "plot")
+
+# Estilo limpio con líneas de referencia verticales en gris claro
+estilov <- theme(panel.grid = element_blank(),
+                 plot.background = element_rect(fill = "#FBFCFC"),
+                 panel.background = element_blank(),
+                 panel.grid.major.x = element_line(color = "#AEB6BF"),
+                 text = element_text(family = "Poppins-Light"),
+                 plot.title.position = "plot")
+
+# Estilo limpio con líneas de referencia horizontales en gris claro
+estiloh <- theme(panel.grid = element_blank(),
+                 plot.background = element_rect(fill = "#FBFCFC"),
+                 panel.background = element_blank(),
+                 panel.grid.major.y = element_line(color = "#AEB6BF"),
+                 text = element_text(family = "Poppins-Light"),
+                 plot.title.position = "plot")
+
+genero <- c("#1FC3AA", "#8624F5", "#FFD129", "#75838F") # Verde - Violeta - Amarillo - Gris
+genero3 <- c("#8624F5","#FFD129", "#1FC3AA")
+
+colores <-  c("#8624F5", "#1FC3AA")
+
+azul <- "#5463A8"
+verde <-  "#1FC3AA"
+rosa1 <- "#B95192"
+rosa2 <- "#EE5777"
+naranja <- "#FF764C"
+amarillo <- "#FFA600"
+gris <- "#75838F"
+lila <- "#8624F5"
+rojo <- "#943126"
+wiki <- "#DEF241"
+
+col4 <- c(azul, lila, rosa1, rosa2)
+col5 <- c(azul, lila, rosa1, rosa2, naranja)
+col6 <- c(azul, lila, rosa1, rosa2, naranja, amarillo)
+
+# Creo un objeto con un texto que se va a repetir mucho a lo largo del análisis
+fuente <- "Fuente: Encuesta KIWI de Sueldos de RRHH para Latam\nEdiciones 2020 y 2021"
+```
+
+# Respondiendo las preguntas objetivo
+
+## Cuanta diversidad de identidades de género y orientaciones sexuales hay en RRHH
+
+En este punto creo que es importante aclarar que entre una edición y otra de la Encuesta KIWI hicimos cambios en el diseño del formulario, y por ejemplo, las preguntas sobre orientación sexual sólo se las hicimos a las personas que trabajan en relación de dependencia, con lo cual no tenemos una continuidad en los datos sobre el total de las personas que participaron, especialmente de quienes trabajan de manera freelance.
+
+En primer lugar, veamos cuántas personas trabajan en RRHH según su identidad de género:
+
+```{r diversidad_1}
+gt(
+kiwi %>% 
+  group_by(edicion, identidad_genero) %>% 
+  count(sort = TRUE) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = edicion, values_from = n) %>% 
+  mutate(Total = `2020` + `2021`,
+         Porcentaje = round(Total/sum(Total),3))
+) %>% 
+  fmt_percent(columns = Porcentaje,
+              decimals = 1) %>% 
+  tab_header(title = "Identidad de Género por Edición") %>% 
+  tab_source_note(source_note = fuente) %>% 
+  cols_label(identidad_genero = "Identidad de Género")
+```
+
+Según la muestra que obtuvimos, **menos del 1% de las personas que trabajan en RRHH son personas no binarias.** Como para quede más claro veamóslo con un gráfico.
+
+```{r diversidad_2}
+kiwi %>% 
+  group_by(identidad_genero) %>% 
+  count(sort = TRUE) %>% 
+  ungroup() %>% 
+  ggplot(aes(y = reorder(identidad_genero, n), x = n, 
+             fill = identidad_genero)) +
+  geom_col() +
+  estilov +
+  geom_text(aes(label = n, hjust = -0.5),
+            size = 3.5,
+            color = c(gris, gris, gris, "black"))+
+  scale_fill_manual(values = c(gris, wiki, gris, gris)) +
+  scale_x_continuous(limits = c(0, 1000)) +
+  labs(title = "Cantidad de respuestas según Identidad de Género",
+       x = "", y = "",
+       caption = fuente) +
+  theme(legend.position = "none")
+  
+```
+
+Por decirlo amablemente: Hay muchas oportunidades de mejora acá.
+
+Y ahora veamos la cantidad de respuestas según la orientación sexual de las personas que participaron de la encuesta. Dado que en la edición 2021 esta era una sección voluntaria, la cantidad de respuestas va a ser distinta que en la tabla anterior. Además, fue algo que no le preguntamos a las personas que trabajan de manera independiente.
+
+La pregunta que hicimos fue **¿Te identificás como LGBTIQ+ (lesbiana, gay, bisexual, transexual, otra minoría sexual)?.** He aquí las respuestas:
+
+```{r diversidad_sexual}
+
+gt(kiwi %>% 
+  filter(!is.na(diversidad_sexual)) %>% 
+  group_by(edicion, diversidad_sexual) %>% 
+  count(sort = TRUE) %>% 
+  ungroup() %>% 
+  pivot_wider(names_from = edicion, 
+              values_from = n) %>% 
+  mutate(Total = `2020` + `2021`,
+         Porcentaje = Total/sum(Total))
+) %>% 
+  fmt_percent(columns = Porcentaje,
+              decimals = 1) %>% 
+  tab_header(title = "Diversidad Sexual por Edición") %>% 
+  tab_source_note(source_note = fuente) %>% 
+  cols_label(diversidad_sexual = "Eres de algún\nColectivo LBGTQ+")
+  
+```
+
+Al menos respecto de esta pregunta, tenemos una mayor representación de diversidades sexuales. Nuevamente, esta muestra no es representativa de todas las personas que trabajan en RRHH, pero esperamos que permita discutir el tema.
+
+```{r diversidad_sexual_plot}
+kiwi %>% 
+  filter(!is.na(diversidad_sexual)) %>%
+  group_by(identidad_genero, diversidad_sexual) %>% 
+  tally() %>% 
+  ungroup() %>% 
+  ggplot(aes(y = identidad_genero, x = n, fill = diversidad_sexual )) +
+  geom_col(position = "fill") +
+  geom_text(aes(label = n, position = position_stack(0.5))) +
+  estilo +
+  theme(legend.position = "top") +
+  labs(title = "Diversidad Sexual según Identidad de Género",
+       subtitle = "Pregunta: ¿Te identificás como LGBTIQ+?", 
+       fill = "Eres de algún Colectivo LGBTIQ+",
+       x = NULL, y = NULL) +
+  scale_fill_manual(values = c(azul, gris, wiki))
+```
+
+## En qué rubros se da la mayor tasa de diversidad
+
+## 
+
+## Niveles de formación
+
+## Y qué roles ejercen estas personas
