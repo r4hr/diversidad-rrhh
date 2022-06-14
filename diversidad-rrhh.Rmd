@@ -124,7 +124,7 @@ kiwi <- kiwi %>%
                                                               "No binario",
                                                               "Gay")))
 
-# Ver resultados
+# Ver resultados del proceso anterior
 unique(kiwi$identidad_genero)
 ```
 
@@ -222,7 +222,7 @@ kiwi <- kiwi %>%
 
 ```
 
-Y por último, si bien esto no es exactamente limpieza de datos, nos va a permitir hacer gráficos más bonitos.
+Y por último, si bien esto no es exactamente limpieza de datos, nos va a permitir hacer gráficos más bonitos más adelante.
 
 ```{r setup_graficos}
 #options(scipen = 999)   # Modifica la visualización de los ejes numérico a valores nominales
@@ -360,9 +360,10 @@ kiwi %>%
   ungroup() %>% 
   ggplot(aes(y = identidad_genero, x = n, fill = diversidad_sexual )) +
   geom_col(position = "fill") +
-  geom_text(aes(label = n, position = position_stack(0.5))) +
-  estilo +
+  geom_text(aes(label = n), position = position_fill(vjust = 0.5), size = 3) +
+  estilov +
   theme(legend.position = "top") +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1))+
   labs(title = "Diversidad Sexual según Identidad de Género",
        subtitle = "Pregunta: ¿Te identificás como LGBTIQ+?", 
        fill = "Eres de algún Colectivo LGBTIQ+",
@@ -370,9 +371,34 @@ kiwi %>%
   scale_fill_manual(values = c(azul, gris, wiki))
 ```
 
+El tamaño de las barras reflejan la proporción de cada respuesta según la identidad de género de cada participante. Por ejemplo, en el caso de las personas que se identifican como *Hombres cis*, 39 personas se identifican como parte de la comunidad LGBTIQ+ (un 11.4%). 32 *Mujeres cis* (4.1%) pertenecen a este colectivo.
+
 ## En qué rubros se da la mayor tasa de diversidad
 
-## 
+Ahora analicemos los rubros. Dado que no tenemos muchas personas con diversas identidades de género, listaremos todos los rubros.
+
+```{r rubros01}
+gt(kiwi %>% 
+  filter(identidad_genero == "Género diverso") %>% 
+  select(Rubro = rubro) %>% 
+  group_by(Rubro) %>% 
+  tally(sort = T, name = "Respuestas")
+)
+```
+
+Ahora, repliquemos el análisis con la pregunta **¿Te identificás como LGBTIQ+ (lesbiana, gay, bisexual, transexual, otra minoría sexual)?.**
+
+```{r rubros_colectivo}
+gt(
+kiwi %>% 
+  filter(diversidad_sexual == "Si") %>% 
+  select(Rubro = rubro) %>% 
+  group_by(Rubro) %>% 
+  tally(sort = T, name = "Respuestas")
+)
+```
+
+Entre los primeros rubros (fuera de *Otros*) nos encontramos con actividades relacionadas con servicios. Recién en el 8° puesto nos encontramos con el primer rubro relacionado con la industria manufacturera.
 
 ## Niveles de formación
 
