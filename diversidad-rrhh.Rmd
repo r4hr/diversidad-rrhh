@@ -20,9 +20,9 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, dpi = 600, 
 
 Junio es el **Mes del Orgullo LBGTIQ+** `r emo::ji("rainbow")`, una etapa del año en donde se hace más visible la lucha por la igualdad de derechos de las personas de distintas identidades de género y orientaciones sexuales no heteronormativas. Es también un mes para celebrar la diversidad y trabajar en pos de la inclusión.
 
-Siendo que en la mayoría de las organizaciones la responsabilidad de las acciones de diversidad e inclusión recaen en RRHH, quisimos aprovechar los datos de las ediciones 2020 y 2021 de la **Encuesta KIWI de Sueldos de RH** para analizar cómo andamos por casa.
+Siendo que en la mayoría de las organizaciones la responsabilidad de las acciones de diversidad e inclusión recaen en RRHH, quise aprovechar los datos de las ediciones 2020 y 2021 de la **Encuesta KIWI de Sueldos de RH** para analizar cómo andamos por casa.
 
-No tenemos un volumen de datos como para afirmar tajantemente si las áreas son diversas o no lo son, pero al menos creo que servirán para fomentar la discusión.
+No tenemos un volumen de datos como para afirmar tajantemente si las áreas son diversas o no lo son, pero al menos creo que servirán para fomentar la discusión. De hecho hay varios sesgos en el análisis que son propios de la población objetivo de los relevamientos (personas que trabajan en RRHH) y que intentaré aclarar lo mejor posible cuando sea necesario.
 
 ```{r librerias_datos}
 # El paquete pacman permite cargar todas las librerías ya instaladas y si faltara instalar alguna, la instala
@@ -41,7 +41,7 @@ kiwi21 <-read_sheet("1LDdXlIwrcsyuywbcS4gdc-1p6wBXfEfL2Y6sNBj-4GM",
 
 ## Los objetivos de este análisis
 
-Con este análisis queremos descubrir:
+Con este análisis pretendo visibilizar:
 
 -   Cuanta diversidad de identidades de género y orientaciones sexuales hay en RRHH.
 
@@ -49,7 +49,9 @@ Con este análisis queremos descubrir:
 
 -   Niveles de formación.
 
--   Y qué roles ejercen estas personas.
+-   Qué roles ejercen las personas diversas.
+
+-   Comparar los resultados de libertad.
 
 Sería interesante poder abordar el gap salarial, pero por un lado tenemos pocas respuestas de personas de distintas identidades de género y diversidades sexuales, y también es un tema que ya abordamos en las ediciones de la Encuesta KIWI [2020](https://rpubs.com/Data4HR/encuesta-kiwi-2020) y [2021](https://rpubs.com/Data4HR/encuesta-kiwi-2021). En ambos links podrás encontrar los datos crudos de ambos años y analizarlo por tu cuenta.
 
@@ -57,9 +59,9 @@ Sería interesante poder abordar el gap salarial, pero por un lado tenemos pocas
 
 ### Selección y limpieza de datos
 
-En ambas ediciones tenemos algunas columnas que se llaman distinto y además en la edición del 2020 y la del 2021 nos referimos de distintas maneras a las identidades de género porque nosotros también tuvimos que aprender a como encarar este análisis de manera más inclusiva.
+En ambas ediciones tenemos algunas columnas que se refieren a lo mismo pero se llaman distinto y además en la edición del 2020 y la del 2021 nos referimos de distintas maneras a las identidades de género porque nosotros también tuvimos que aprender a como encarar este análisis de manera más inclusiva.
 
-Si la parte técnica de este trabajo no es de tu interés podés avanzar directamente a la siguiente sección.
+Si la parte técnica de este trabajo no es de tu interés podés avanzar directamente a la siguiente sección de este documento.
 
 ```{r limpieza_datos}
 # Seleccionar las columnas de ambos data frames.
@@ -367,7 +369,7 @@ kiwi %>%
   labs(title = "Diversidad Sexual según Identidad de Género",
        subtitle = "Pregunta: ¿Te identificás como LGBTIQ+?", 
        fill = "Eres de algún Colectivo LGBTIQ+",
-       x = NULL, y = NULL) +
+       x = NULL, y = NULL, caption = fuente) +
   scale_fill_manual(values = c(azul, gris, wiki))
 ```
 
@@ -398,8 +400,262 @@ kiwi %>%
 )
 ```
 
-Entre los primeros rubros (fuera de *Otros*) nos encontramos con actividades relacionadas con servicios. Recién en el 8° puesto nos encontramos con el primer rubro relacionado con la industria manufacturera.
+Entre los primeros rubros (fuera de *Otros*) nos encontramos con actividades relacionadas con servicios. Recién en el 8° puesto nos encontramos con el primer rubro relacionado con la industria manufacturera (*Agro*).
 
 ## Niveles de formación
 
-## Y qué roles ejercen estas personas
+Para simplificar este análisis, vamos a crear un *flag*, una columna que nos indique con un 1 si la identidad de género de una persona es *No Binaria* o si pertenece al colectivo LGBTQ+, y con un 0 si la identidad es Hombre o Mujers cis, y heterosexual.
+
+```{r flag}
+# Si el valor de la columna identidad_genero es igual a Género diverso o el valor de la columna diversidad_sexual es igual a Si, entonces el valor en la nueva columna llamada diversa es 1, de lo contrario poner 0.
+kiwi <- kiwi %>% 
+  mutate(diversa = if_else(identidad_genero == "Género diverso" | diversidad_sexual == "Si",
+                           1, 0))
+```
+
+Ahora vamos a filtrar por esta nueva columna y veremos cuál es el nivel máximo de formación de las personas que pertenecen a algún colectivo de diversidad.
+
+```{r formacion}
+# Definir la jerarquía de los niveles de formación
+kiwi <- kiwi %>% 
+  mutate(maximo_nivel_de_formacion = factor(maximo_nivel_de_formacion,
+                                            levels = c("Doctorado en curso",
+                                                       "Maestría completa", 
+                                                       "Maestría en curso",
+                                                       "Maestría abandonada",
+                                                       "Diplomado de posgrado completo",
+                                                       "Diplomado de posgrado en curso",
+                                                       "Diplomado de posgrado abandonado",
+                                                       "Universitario completo",
+                                                       "Universitario en curso",
+                                                       "Universitario abandonado",
+                                                       "Terciario completo",
+                                                       "Terciario en curso",
+                                                       "Terciario abandonado",
+                                                       "Secundario completo",
+                                                       "Secundario en curso")),
+         maximo_nivel_de_formacion = str_wrap(maximo_nivel_de_formacion,
+                                              width = 20))
+
+
+kiwi %>% 
+  filter(diversa == 1) %>% 
+  group_by(maximo_nivel_de_formacion) %>% 
+  tally() %>% 
+  ggplot(aes(x = n, y = fct_rev(maximo_nivel_de_formacion))) +
+  geom_col(fill = wiki) +
+  labs(title = "Máximo Nivel de Formación de Personas Diversas",
+       x = NULL, y = NULL,
+       caption = fuente) +
+  estilov
+```
+
+Comparemos esta distribución entre las personas englobadas dentro de algún colectivo de diversidad vs. personas heteronormativas.
+
+```{r formacion2, fig.height=9}
+kiwi %>% 
+  filter(!is.na(diversa)) %>% 
+  group_by(diversa, maximo_nivel_de_formacion) %>% 
+  summarise(rtas = n()) %>% 
+  mutate(porcentaje = round(rtas/sum(rtas),3)) %>% 
+  ggplot(aes(x = maximo_nivel_de_formacion, y = porcentaje, fill = factor(diversa))) +
+  geom_col() +
+  facet_wrap(~diversa, ncol = 1) +
+  scale_fill_manual(values = c(verde, wiki)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  estiloh +
+  labs(title = "Comparación de Nivel de Formación de personas heteronormativas\ny de personas de sexualidad diversa",
+       x = NULL, y = NULL,
+       caption = fuente,
+       fill = "Flag: Es Diversa") +
+    theme(legend.position = "top",
+          axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+La buena noticia es que, proporcionalmente hablando, no se perciben diferencias significativas entre los niveles de formación de personas diversas y de las personas heternormativas (personas heterosexuales cuya identidad de género es igual a la asignada al nacer).
+
+Acá **hay que reconocer un sesgo importante de los datos** y es que las personas que participaron de la Encuesta KIWI trabajan en RRHH, y en líneas generales, hay un muy alto nivel de formación profesional. Este es un hecho no se replica en todos los colectivos de diversidad. Por ejemplo, según el informe [La Revolución de las Mariposas](https://www.mpdefensa.gob.ar/sites/default/files/la_revolucion_de_las_mariposas.pdf) publicado por el Ministerio Público de la Defensa de la Ciudad Autónoma de Buenos Aires **sólo el 9% de la población trans tiene acceso a empleos formales**.
+
+## Qué roles ejercen las personas diversas
+
+Por último, veamos en qué roles se desempeñan las personas que pertenecen a algún colectivo de diversidad dentro de RRHH.
+
+```{r roles}
+# Crear un flag para posiciones de manager (Gerente, Jefe o Responsable)
+kiwi <- kiwi %>% 
+  mutate(manager = if_else(puesto %in% c("Gerente", "Jefe", "Responsable"),
+                           1, 0))
+
+managers_porcentaje <- kiwi %>% 
+  filter(diversa == 1) %>% 
+  group_by(manager) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(porcentaje = n/sum(n))
+
+puestos_porcentaje <- kiwi %>% 
+  filter(diversa == 1) %>% 
+  group_by(puesto) %>% 
+  count(sort = T) %>% 
+  ungroup() %>% 
+  mutate(porcentaje = n/sum(n))
+
+# Visualización
+ggplot(puestos_porcentaje, aes(x = n, y = reorder(puesto, n))) +
+  geom_col(fill = wiki) +
+  geom_text(aes(label = n), 
+            hjust = 1.3,
+            size = 4) +
+  estilov +
+  labs(title = "Roles que ocupan las personas diversas",
+       x = NULL, y = NULL,
+       caption = fuente)
+```
+
+Algo interesante de este gráfico es que un `r scales::percent(pull(managers_porcentaje[2,3]))` ocupan algún puesto jerárquico (definidos como `Gerente`, `Jefe`, o `Responsable`) lo cual me pareció algo positivo.
+
+Sólo 6 personas, un `r scales::percent(pull(puestos_porcentaje[6,3]))`, trabajan por su cuenta como `Consultor Freelance`, el cual me parece un dato alentador mirándolo desde el punto de vista de la formalidad laboral y la estabilidad.
+
+Creo que es un dato que también puede estar sesgado por la muestra de datos, pero la hipótesis inicial que tenía era que el porcentaje de freelancers sería mayor en este caso.
+
+## Libertad en el trabajo
+
+En la última edición de la Encuesta KIWI incluimos dos preguntas, una fue si **En tu empresa puedes ser como realmente eres, por ej. expresar abiertamente tu personalizada, tu identidad de género, orientación sexual, etc..** y la otra fue **¿Sufriste alguna situación de acoso, abuso o de discriminación en algún trabajo?**, con las cuales apuntábamos a analizar qué tan abiertos son los lugares de trabajo, y qué tan seguras y libres se sienten las personas con su lugar de trabajo.
+
+En esta sección vamos a comparar los resultados de estas preguntas de acuerdo a si las personas pertenecen a algún colectivo de diversidad o no.
+
+Estas eran preguntas voluntarias en la edición del 2021 así que no todas las personas la respondieron, y no estaban incluidas en la edición del 2020.
+
+```{r libertad}
+# Limpiar campos
+libertad <- kiwi %>% 
+  filter(libertad_ser %in% c("De acuerdo", "En desacuerdo", "Ni de acuerdo ni en desacuerdo", 
+                             "Totalmente de acuerdo", "Totalmente en desacuerdo"),
+         !is.na(diversa))
+
+# Ordenar la jerarquía de las respuestas sobre libertad en el trabajo.
+libertad <- libertad %>% 
+  mutate(libertad_ser = factor(libertad_ser, levels = c("Totalmente de acuerdo", "De acuerdo", 
+                                                        "Ni de acuerdo ni en desacuerdo",
+                                                        "En desacuerdo", "Totalmente en desacuerdo"))) 
+```
+
+Comparemos las respuestas según si las personas pertenecen a algún colectivo de diversidad o no.
+
+```{r libertad_1}
+libertad_scores <- libertad %>%
+  mutate(diversa = factor(diversa)) %>% 
+  group_by(diversa, libertad_ser) %>% 
+  summarise(respuestas = n()) %>% 
+  mutate(porcentaje = respuestas/sum(respuestas)) 
+
+ggplot(libertad_scores, aes(y = diversa, x = respuestas, fill = libertad_ser)) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c(azul, lila, gris, rosa2, rosa1)) +
+  geom_text(aes(label = scales::percent(porcentaje, accuracy = 1)), position = position_fill(vjust = 0.5), size = 3) +
+  estilo +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme(legend.position = "top",
+        legend.text = element_text(size = 5),
+        legend.background = element_rect(colour = "#FCFCFC")) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  labs(title = "Niveles de libertad en el trabajo",
+       subtitle = "0: Personas no diversas - 1: Personas diversas",
+       x = NULL, y = NULL, caption = fuente,
+       fill = "Libertad para\nser uno mismo")
+
+```
+
+No hay grandes diferencias entre los resultados de ambos grupos. En la opción *Totalmente de acuerdo* es donde encontramos la mayor diferencia (6%). Si agrupamos las respuestas *Totalmente en desacuerdo* y *En desacuerdo*, la diferencia total es de 3%.
+
+**Me parece muy positivo que 2 de cada 3 personas (el 66%) de colectivos de diversidad sientan que pueden ser como son en sus respectivos trabajos.**
+
+Ahora comparemos las respuestas a la pregunta **¿Sufriste alguna situación de acoso, abuso o de discriminación en algún trabajo?.** Primero, analicemos los resultados según si la persona pertenece a algún colectivo de diversidad o no.
+
+```{r discriminacion}
+kiwi %>% 
+  mutate(sufrio_acoso = fct_collapse(sufrio_acoso,
+                                     "Si" = c("Si", "agresión verbal.", "Mobbing",
+                                              "no en el actual"))) %>% 
+  filter(sufrio_acoso %in% c("Si", "No"), 
+         !is.na(diversa)) %>% 
+  group_by(diversa, sufrio_acoso) %>% 
+  summarise(cantidad = n()) %>%
+  mutate(porcentaje = cantidad/sum(cantidad)) %>% 
+  ggplot(aes(x = factor(diversa), y = cantidad, fill = sufrio_acoso)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = paste0(cantidad, " (", scales::percent(porcentaje, accuracy = 1), ")")),
+            position = position_dodge(0.9), vjust = -0.3, size = 3) +
+  estiloh +
+  labs(title = "Personas que sufrieron acoso, abuso o discriminación\nsegún colectivo de diversidad",  subtitle = "0: Personas no diversas - 1: Personas diversas",
+       x = NULL, y = NULL, caption = fuente,
+       fill = "Sufrió acoso, abuso o discriminación") +
+  theme(legend.position = "top") +
+  scale_fill_manual(values = c(naranja, gris))
+
+```
+
+El 38% de las personas diversas, ya sea por su identidad de género o por su orientación sexual sufrieron alguna situación de acoso, abuso, o discriminación, frente a un 28% de las personas cis y heterosexuales. Independientemente de la cantidad de respuestas y los sesgos y todo lo que quieran, me parece un resultado horrible.
+
+Ahora desagreguemos el gráfico anterior según la identidad de género de las personas:
+
+```{r}
+kiwi %>% 
+  mutate(sufrio_acoso = fct_collapse(sufrio_acoso,
+                                     "Si" = c("Si", "agresión verbal.", "Mobbing",
+                                              "no en el actual"))) %>% 
+  filter(sufrio_acoso %in% c("Si", "No")) %>% 
+  group_by(identidad_genero, sufrio_acoso) %>% 
+  summarise(cantidad = n()) %>%
+  mutate(porcentaje = cantidad/sum(cantidad)) %>% 
+  ggplot(aes(x = identidad_genero, y = cantidad, fill = sufrio_acoso)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = paste0(cantidad, " (", scales::percent(porcentaje, accuracy = 1), ")")),
+            position = position_dodge(0.9), vjust = -0.3, size = 3) +
+  estiloh +
+  labs(title = "Personas que sufrieron acoso, abuso o discriminación\nsegún su identidad de género",  subtitle = "0: Personas no diversas - 1: Personas diversas",
+       x = NULL, y = NULL, caption = fuente,
+       fill = "Sufrió acoso, abuso o discriminación") +
+  theme(legend.position = "top") +
+  scale_fill_manual(values = c(naranja, gris))
+```
+
+En este último gráfico podemos apreciar las distintas realidades de las personas. **Un tercio de las mujeres cis** **sufrió al menos una vez alguna situación de acoso, abuso o discriminación** versus un 15% de los hombres cis. Más allá de la cantidad de respuestas recibidas, las tendencias son claras.
+
+Si bien esto merece un análisis ad hoc más exhaustivo, creo que es un tema que todas las organizaciones debemos reconocer, visibilizar y cambiar. Si esto ocurre en un área como RRHH cómo serán los resultados si releváramos a toda una organización.
+
+Para mí esto es importante por varios motivos: en primer lugar porque es lo correcto. Ya tenemos bastantes presiones en la vida y en el trabajo para tener que cuidarnos en el lugar donde, en la mayoría de los casos, pasamos la mayor cantidad de tiempo de nuestra semana.
+
+Yo me tomo este tema de manera personal porque tengo una hija que hoy tiene 8 años. En 10 años va a poder salir a buscar trabajo y me gustaría que encuentre entornos laborales más seguros, sanos, inclusivos y equitativos donde pueda ser como es. Todas las mujeres de mi familia, mi esposa, mi mamá, mis hermanas, en algún momento estuvieron expuestas a alguna situación de acoso o de ninguneo que los hombres rara vez sufrimos.
+
+# Conclusión
+
+Desde hace varios años pienso que en Recursos Humanos somos muy conservadores. Muchas veces estamos condicionados por el contexto que nos ofrece la organización, creánme que nos gustaría hacer muchas más cosas que las que el negocio nos permite hacer.
+
+Dicho esto, creo que este análisis muestra que por ejemplo, hablamos mucho de diversidad desde RRHH pero predicamos poco con el ejemplo. Enfoqué este análisis por el lado de la identidad de género y orientación sexual aprovechando el mes del orgullo, pero si miráramos discapacidad, los resultados no cambian mucho. Más allá de los sesgos que tiene este análisis, la cantidad de respuestas que obtuvimos en cada edición (762 en 2020 y 586 en 2021) me permite afirmar que tenemos mucho por mejorar en este sentido.
+
+La principal ventaja de la diversidad es poder tener obtener diferentes puntos de vista para hacer frente a los objetivos y necesidades de la organización y de las personas, poder anticipar necesidades de los clientes y poder tener al menos a alguien que se pueda poner en los zapatos de alguien más.
+
+Y para lograr eso, no es sólo tener que tener más mujeres, o más gays, o personas con capacidades diferentes. Es un paso necesario pero no suficiente. Para poder lograr que las personas aporten su punto de vista, especialmente cuando la opinión contradice lo que piensa la mayoría o lo que piense una persona de mayor jerarquía, es vital contar con un entorno seguro donde cada persona se pueda expresar con libertad. Y nadie se puede expresar con libertad si no puede mostrarse en su lugar de trabajo tal cual es.
+
+La mayoría de las veces la violencia en el trabajo no es algo tan grotesco como tocarle el culo a una mujer. Son pequeñas cosas, como interrumpir, como los chistes, comentarios, la asignación de tareas (a quién le pedimos que nos traiga un café, a quién le pedimos que nos haga un informe), a quien promovemos y para qué roles. Tenemos mucho trabajo para derribar prejuicios y comportamientos que están ligados a nuestra crianza y a nuestras creencias.
+
+## La comunidad de R4HR
+
+R4HR, la comunidad que también llamamos el Club de R para RRHH es una comunidad de aprendizaje de programación en R destinada para todas las personas que trabajan o quieran trabajar en RRHH en todas partes del mundo. Pensamos esta comunidad inicialmente para la comunidad hispanoparlante para facilitar el aprendizaje y generar contenido que sea relevante para las personas que nos desarrollamos en estas funciones.
+
+Podes sumarte a nuestra comunidad en Slack, o bien seguirnos en redes sociales, acceder a todo nuestro contenido y participar en nuestras actividades gratuitas y abiertas. [Todo eso lo encontrás en este link](https://linktr.ee/r4hrclub) 🥝.
+
+## Un poco sobre mí
+
+A diferencia de otras cosas que hago para R4HR este análisis lo escribí en primera persona porque es un tema importante para mí. Si bien siempre la diversidad e inclusión fueron temas importantes para mí, se volvieron urgentes cuando nació mi hija.
+
+Toda madre y todo padre quiere lo mejor para sus hijos e hijas y que cumplan todos sus sueños. Y me doy cuenta que en el caso de las niñas, hay muchas limitaciones que vamos poniendo desde muy chicas. Y qué difícil es romper esos estereotipos.
+
+Me acuerdo que en sala de 2, el primer año que mi hija fue al jardín de infantes, la actividad de bienvenida que hicieron fue que se disfrazaran de exploradores y me pareció genial porque niñas y niños estaban a la par en el mismo rol. En la sala de 3, fue de príncipes y princesas, y mi hija empezó con los estereotipos, como por ejemplo que el rosa es para las chicas y el azul es para los chicos. Ese año le pedí a mi mujer que para el día del padre me regalen una camisa rosa para que ella vea que los colores no tienen género.
+
+Esto que parece una pavada después tiene sus consecuencias. En Argentina, en la década del 90, la mayoría de las personas que estudiaban una carrera de Computación en la universidad eran mujeres, porque era algo asociado al trabajo de una secretaria. Con la irrupción de los negocios de las punto com y los negocios a través de internet y de la tecnología la mayoría de las personas que estudian Computación hoy soy hombres cis. Por eso se volvió una industria machista y bastante misógina.
+
+Y eso se traduce también en RRHH. Si miran los informes de las Encuestas KIWI dos tercios de las personas que trabajan en RRHH son mujeres, pero en los roles de People Analytics (donde se gana bastante bien) tenemos una paridad casi del 50/50. Lo cual está bueno, pero no tan bueno si lo miramos desde el punto de vista del retroceso en la representación. Algo similar pasa con los puestos de jerarquía.
+
+En fin, si quieren discutir o debatir estos temas conmigo, o mandar un comentario sobre esto que escribí me pueden escribir a sergio\@d4hr.com o por [Telegram](https://t.me/SergioGarciaMora), [LinkedIn](https://www.linkedin.com/in/sergiogarciamora/) o [Twitter](https://twitter.com/sergiogarciamor).
