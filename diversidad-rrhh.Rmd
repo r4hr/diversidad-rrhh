@@ -646,6 +646,8 @@ R4HR, la comunidad que también llamamos el Club de R para RRHH es una comunidad
 
 Podes sumarte a nuestra comunidad en Slack, o bien seguirnos en redes sociales, acceder a todo nuestro contenido y participar en nuestras actividades gratuitas y abiertas. [Todo eso lo encontrás en este link](https://linktr.ee/r4hrclub) 🥝.
 
+Si querés ver el código del análisis (más allá del documento), este es el link al [repositorio de GitHub](https://github.com/r4hr/diversidad-rrhh).
+
 ## Un poco sobre mí
 
 A diferencia de otras cosas que hago para R4HR este análisis lo escribí en primera persona porque es un tema importante para mí. Si bien siempre la diversidad e inclusión fueron temas importantes para mí, se volvieron urgentes cuando nació mi hija.
